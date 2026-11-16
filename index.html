@@ -124,6 +124,28 @@ textarea:focus{outline:2px solid var(--accent);border-color:transparent}
 .fav b{overflow-wrap:anywhere}
 .notes{margin:8px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.55}
 .rvs{font-size:.8rem;color:var(--muted);text-align:center;margin:0 0 8px;min-height:1em}
+.lgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.lcard{display:block;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:10px;text-decoration:none;color:var(--text);box-shadow:0 12px 32px -14px rgba(0,0,0,.4);transition:transform .2s}
+.lcard:hover,.lcard:focus-visible{transform:translateY(-4px)}
+.mosaic{display:grid;grid-template-columns:1fr 1fr;gap:3px;border-radius:12px;overflow:hidden;margin-bottom:8px}
+.mosaic div{aspect-ratio:1;background:color-mix(in srgb,var(--line) 80%,transparent);display:grid;place-items:center;font-size:1.2rem;overflow:hidden}
+.mosaic img{width:100%;height:100%;object-fit:cover;display:block}
+.ln{font-weight:800;overflow-wrap:anywhere}
+input.lname{width:100%;font:800 1.5rem/1.2 system-ui,sans-serif;color:var(--text);background:transparent;border:0;border-bottom:2px dashed var(--line);border-radius:0;padding:4px 0;margin:0}
+input.lname:focus{outline:none;border-bottom-color:var(--accent)}
+.lol{list-style:none;margin:0;padding:0}
+.litem{display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--line);cursor:grab;border-radius:10px;transition:background .15s}
+.litem:last-child{border-bottom:0}.litem:hover{background:color-mix(in srgb,var(--accent) 7%,transparent)}
+.litem.drag{opacity:.35}.litem.over{box-shadow:inset 0 3px 0 var(--accent)}
+.litem .cv{width:52px;height:52px}.litem .info{flex:1;min-width:0}.litem .t{font-size:1rem}
+.litem:nth-child(1) .rk{color:#f59e0b;font-size:1.4rem}.litem:nth-child(2) .rk{color:#9ca3af;font-size:1.2rem}.litem:nth-child(3) .rk{color:#c2764a;font-size:1.1rem}
+.lrate{display:flex;align-items:center;gap:3px;text-decoration:none;flex:none}.lrate b{font-size:.85rem;white-space:nowrap}
+.lmv{display:flex;flex-direction:column;gap:3px;flex:none}
+.ghost.sm{padding:2px 9px;font-size:.7rem;line-height:1.3}.ghost:disabled{opacity:.3;cursor:default}
+#lres{margin-top:10px}#lres .hit{padding:8px}#lres .cv{width:44px;height:44px}
+.plus{font-size:1.4rem;font-weight:800;color:var(--accent);flex:none}
+.addto{margin:10px 0 0;width:auto;max-width:100%;padding:8px 10px;font-size:.85rem}
+@media (max-width:480px){.lrate b{display:none}.litem{gap:7px}.litem .cv{width:44px;height:44px}}
 .kanim{transform-box:fill-box;transform-origin:50% 100%}
 @keyframes kbob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
 @keyframes kbreath{0%,100%{transform:scale(1,1)}50%{transform:scale(1.03,.98)}}
@@ -139,7 +161,7 @@ textarea:focus{outline:2px solid var(--accent);border-color:transparent}
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><radialGradient id="gal" cx="35%" cy="30%" r="90%"><stop offset="0" stop-color="#7c3aed"/><stop offset=".5" stop-color="#312e81"/><stop offset="1" stop-color="#0b0a1f"/></radialGradient></defs></svg>
 <main>
-<nav><span class="brand" id="brand"></span><a href="#home">Home</a><a href="#search">Search &amp; review</a><a href="#albums">My albums</a><span class="sync" id="sync"></span></nav>
+<nav><span class="brand" id="brand"></span><a href="#home">Home</a><a href="#search">Search &amp; review</a><a href="#albums">My albums</a><a href="#lists">Lists</a><span class="sync" id="sync"></span></nav>
 
 <section id="p-home">
 <div class="hero"><div class="heroRow"><div id="homeK"></div><div><h1>Album Ratings</h1><div class="bubble" id="homeSay"></div></div></div><p class="sub">Find an album, give it a score from 1 to 10, and shade it low or high. A High 8 still sits just under a Low 9.</p></div>
@@ -171,6 +193,13 @@ textarea:focus{outline:2px solid var(--accent);border-color:transparent}
 </div>
 </section>
 
+<section id="p-lists" hidden>
+<div class="head"><div><h2>Lists</h2><div class="bubble" id="listsMsg"></div></div><div id="listsK"></div></div>
+<p class="sub">Make ranked lists of albums, like “Best of 2024” or “Desert island picks”.</p>
+<div class="card"><div class="row"><input type="text" id="newList" placeholder="Name your new list…" maxlength="80" style="margin:0"><button class="btn" id="mkList">Create</button></div></div>
+<div id="listsGrid"></div>
+</section>
+<section id="p-list" hidden><a class="back" href="#lists">← Lists</a><div id="lst"></div></section>
 <section id="p-album" hidden><a class="back" href="#albums">← My albums</a><div id="alb"></div></section>
 
 <section id="p-albums" hidden>
@@ -182,9 +211,9 @@ textarea:focus{outline:2px solid var(--accent);border-color:transparent}
 </section>
 </main>
 <script>
-var KEY="albumRatings.v1",albums=[],cur=null,sample=null,hits=[],PAGES=["home","search","albums","album"];
+var KEY="albumRatings.v1",albums=[],cur=null,sample=null,hits=[],PAGES=["home","search","albums","album","lists","list"];
 try{albums=JSON.parse(localStorage.getItem(KEY)||"[]")}catch(e){albums=[]}
-var cloud={col:null,ready:false,synced:{},q:Promise.resolve(),pending:0,failed:false},BUILTIN_SET=null;
+var cloud={col:null,ready:false,synced:{},lcol:null,lready:false,lsynced:{},q:Promise.resolve(),pending:0,failed:false},BUILTIN_SET=null;
 function newId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function okId(id){return /^[A-Za-z0-9_\-~:@+]{1,150}$/.test(String(id||""))}
 function cloudBody(a){var o={};for(var k in a)if(k!=="tracks")o[k]=a[k];
@@ -202,7 +231,7 @@ function save(){
  Object.keys(cloud.synced).forEach(function(id){if(!(id in now)){delete cloud.synced[id];queue(function(){return cloud.col.doc(id).delete()})}});
 }
 function rerender(){var parts=(location.hash||"#home").slice(1).split("/");
- if(parts[0]==="albums")renderList();else if(parts[0]==="album")renderAlbum(parts[1]);else if(parts[0]==="home"||!parts[0])renderHome()}
+ if(parts[0]==="albums")renderList();else if(parts[0]==="album")renderAlbum(parts[1]);else if(parts[0]==="lists")renderLists();else if(parts[0]==="list")renderListPage(parts[1]);else if(parts[0]==="home"||!parts[0])renderHome()}
 function applyRemote(snap){
  albums=snap.docs.map(function(d){var a=JSON.parse(JSON.stringify(d.data()||{}));a.id=d.id;return a});
  cloud.synced={};albums.forEach(function(a){cloud.synced[a.id]=JSON.stringify(cloudBody(a))});
@@ -217,6 +246,7 @@ async function startCloud(){
   var db=await claude.use("db"),user=await claude.use("user");if(!db||!user)return;
   var uid=await user.id();if(!uid)return;
   cloud.col=db.doc("data/users/"+uid+"/library").collection("albums");
+  startListsCloud(db,uid);
   setSync("saving");
   var timer=setTimeout(function(){if(!cloud.ready)setSync("offline")},10000);
   cloud.col.onSnapshot(function(snap){
@@ -281,9 +311,9 @@ async function fillCovers(){
 function route(){
  var parts=(location.hash||"#home").slice(1).split("/"),h=parts[0];if(PAGES.indexOf(h)<0)h="home";
  PAGES.forEach(function(p){$("p-"+p).hidden=p!==h});
- var navKey=h==="album"?"albums":h;
+ var navKey=h==="album"?"albums":h==="list"?"lists":h;
  document.querySelectorAll("nav a").forEach(function(a){a.classList.toggle("on",a.getAttribute("href")==="#"+navKey)});
- if(h==="home")renderHome();if(h==="albums")renderList();if(h==="album")renderAlbum(parts[1]);
+ if(h==="home")renderHome();if(h==="albums")renderList();if(h==="album")renderAlbum(parts[1]);if(h==="lists")renderLists();if(h==="list")renderListPage(parts[1]);
  window.scrollTo(0,0);
 }
 window.addEventListener("hashchange",route);
@@ -798,11 +828,16 @@ function renderAlbum(id){
  $("alb").innerHTML='<div class="card"><div class="dtop"><div class="dcv">'+(a.cover?'<img src="'+a.cover+'" alt="">':'💿')+'</div><div class="dinfo"><h2>'+esc(a.title)+'</h2><div class="a">'+esc(a.artist)+(a.year?' · '+esc(a.year):'')+'</div>'+gen
   +'<div class="drate">'+mascot(a,64)+'<span style="color:hsl('+hue(a)+' 75% 42%)">'+label(a)+'</span><span class="a" style="font-weight:400">('+sc.toFixed(2)+')</span></div>'
   +(a.fav?'<div class="fav"><span>⭐ Favorite song</span><b>'+esc(a.fav)+'</b></div>':'')
-  +'<div class="dact"><button class="ghost" id="dedit">Edit review</button><button class="ghost" id="ddel">Delete</button></div></div></div>'
+  +'<div class="dact"><button class="ghost" id="dedit">Edit review</button><button class="ghost" id="ddel">Delete</button></div><select class="addto" id="addto" aria-label="Add to a list"><option value="">＋ Add to a list…</option>'+lists.map(function(l){var k=itemKey(a.title,a.artist),inl=l.items.some(function(it){return it.k===k||it.albumId===a.id});return '<option value="'+l.id+'"'+(inl?' disabled':'')+'>'+esc(l.name)+(inl?' ✓':'')+'</option>'}).join("")+'<option value="__new">New list…</option></select><div class="a" id="addmsg" style="margin-top:4px"></div></div></div>'
   +'<div class="kwrap" id="kw">'+kwHtml(a,t)+'</div>'+(1?'<div style="text-align:center"><button class="ghost" id="doutfit">Change outfit ('+(outfitOf(a)+1)+'/3)</button></div>':'')+'</div>'
   +'<div class="card"><h2 style="font-size:1.2rem">My thoughts</h2>'+(a.notes?'<p class="notes">'+esc(a.notes)+'</p>':'<p class="a" style="margin:6px 0 0">No thoughts written yet. Tap Edit review to add some.</p>')+'</div>'
   +'<div class="card"><h2 style="font-size:1.2rem">Track list</h2><div id="trk"><div class="empty">Loading tracks…</div></div></div>';
  $("dedit").onclick=function(){location.hash="#search";setTimeout(function(){startReview(a)},0)};
+ $("addto").onchange=function(){var v=this.value;if(!v)return;var l;
+  if(v==="__new"){l=makeList("Untitled list");justMade=l.id}else l=lists.find(function(x){return x.id===v});
+  if(l){l.items.push({k:itemKey(a.title,a.artist),title:a.title,artist:a.artist||"",albumId:a.id});touch(l);
+   if(v==="__new"){location.hash="#list/"+l.id;return}
+   renderAlbum(a.id);$("addmsg").innerHTML='Added to <a href="#list/'+l.id+'">'+esc(l.name)+'</a> ✓'}};
  $("ddel").onclick=function(){twoTap(this,function(){albums=albums.filter(function(z){return z.id!==a.id});save();location.hash="#albums"})};
  if($("doutfit"))$("doutfit").onclick=function(){a.outfit=(outfitOf(a)+1)%3;save();$("kw").innerHTML=kwHtml(a,t);this.textContent="Change outfit ("+(a.outfit+1)+"/3)"};
  loadTracks(a);
@@ -858,6 +893,94 @@ $("imp").onclick=function(){var t=prompt("Paste backup here:");if(!t)return;
  try{var d=JSON.parse(t);if(Array.isArray(d)){albums=d;save();renderList()}}catch(e){alert("That backup couldn’t be read.")}};
 albums.forEach(function(a){if(!a.cover){var bc=builtinCover(a.title,a.artist);if(bc){a.cover=bc.cover;if(!a.year)a.year=bc.year;if(!a.genre)a.genre=bc.genre}}});save();
 $("brand").innerHTML=khead("happy",46);$("searchK").innerHTML=kbody("search","pleased",112);
+var LKEY="albumRatings.lists.v1",lists=[],lcand=[],ldrag=-1,justMade=null;
+try{lists=JSON.parse(localStorage.getItem(LKEY)||"[]");if(!Array.isArray(lists))lists=[]}catch(e){lists=[]}
+function itemKey(t,a){return normT(t)+"|"+normT(a)}
+function itemAlbum(it){return (it.albumId&&albums.find(function(a){return a.id===it.albumId}))||albums.find(function(a){return itemKey(a.title,a.artist)===it.k})||null}
+function itemCover(it){var a=itemAlbum(it);if(a&&a.cover)return a.cover;if(it.cover)return it.cover;var bc=builtinCover(it.title,it.artist);return bc?bc.cover:""}
+function plural(n,w){return n+" "+w+(n===1?"":"s")}
+function saveLists(){
+ try{localStorage.setItem(LKEY,JSON.stringify(lists))}catch(e){}
+ if(!cloud.lcol||!cloud.lready)return;
+ var now={};lists.forEach(function(l){if(!okId(l.id))l.id=newId();now[l.id]=JSON.stringify(l)});
+ Object.keys(now).forEach(function(id){if(cloud.lsynced[id]!==now[id]){var body=now[id];cloud.lsynced[id]=body;queue(function(){return cloud.lcol.doc(id).set(JSON.parse(body))})}});
+ Object.keys(cloud.lsynced).forEach(function(id){if(!(id in now)){delete cloud.lsynced[id];queue(function(){return cloud.lcol.doc(id).delete()})}});
+}
+function applyLists(snap){
+ lists=snap.docs.map(function(d){var l=JSON.parse(JSON.stringify(d.data()||{}));l.id=d.id;if(!Array.isArray(l.items))l.items=[];return l});
+ cloud.lsynced={};lists.forEach(function(l){cloud.lsynced[l.id]=JSON.stringify(l)});
+ try{localStorage.setItem(LKEY,JSON.stringify(lists))}catch(e){}
+ var ae=document.activeElement;if(ae&&ae.closest&&ae.closest("#lst")&&ae.tagName==="INPUT")return;
+ rerender();
+}
+function startListsCloud(db,uid){
+ cloud.lcol=db.doc("data/users/"+uid+"/library").collection("lists");
+ cloud.lcol.onSnapshot(function(snap){
+  if(!cloud.lready){if(snap.metadata.fromCache)return;cloud.lready=true;
+   if(snap.empty){if(lists.length)saveLists();return}
+   applyLists(snap);return}
+  if(snap.metadata.hasPendingWrites||cloud.pending)return;
+  applyLists(snap);
+ },function(){});
+}
+function touch(l){l.updated=Date.now();saveLists()}
+function renderLists(){
+ $("listsK").innerHTML=kbody("hold","happy",112);
+ $("listsMsg").textContent=lists.length?"You have "+plural(lists.length,"list")+"!":"Let’s make your first list!";
+ var ls=lists.slice().sort(function(a,b){return (b.updated||0)-(a.updated||0)});
+ $("listsGrid").innerHTML=ls.length?'<div class="lgrid">'+ls.map(function(l){
+   var cv=l.items.slice(0,4).map(function(it){var c=itemCover(it);return '<div>'+(c?'<img src="'+c+'" alt="">':'💿')+'</div>'}).join("");
+   for(var i=l.items.length;i<4;i++)cv+='<div></div>';
+   return '<a class="lcard" href="#list/'+l.id+'"><div class="mosaic">'+cv+'</div><div class="ln">'+esc(l.name)+'</div><div class="a">'+plural(l.items.length,"album")+'</div></a>'}).join("")+'</div>'
+  :'<div class="card"><div class="empty">No lists yet. Name one above to get started.</div></div>';
+}
+function makeList(name){var l={id:newId(),name:name,items:[],created:Date.now(),updated:Date.now()};lists.push(l);saveLists();return l}
+$("mkList").onclick=function(){var n=$("newList").value.trim();if(!n){$("newList").focus();return}var l=makeList(n);$("newList").value="";location.hash="#list/"+l.id};
+$("newList").onkeydown=function(e){if(e.key==="Enter")$("mkList").click()};
+function renderListPage(id){
+ var l=lists.find(function(x){return x.id===id});
+ if(!l){$("lst").innerHTML='<div class="card"><div class="empty">That list doesn’t exist anymore. <a href="#lists">Back to Lists</a></div></div>';return}
+ var n=l.items.length;
+ var rows=l.items.map(function(it,i){var a=itemAlbum(it),c=itemCover(it);
+  return '<li class="litem" draggable="true" data-i="'+i+'"><span class="rk">'+(i+1)+'</span><div class="cv">'+(c?'<img src="'+c+'" alt="">':'💿')+'</div>'
+   +'<div class="info"><div class="t">'+esc(it.title)+'</div><div class="a">'+esc(it.artist||"")+'</div></div>'
+   +(a?'<a class="lrate" href="#album/'+a.id+'" title="Your rating">'+mascot(a,32)+'<b style="color:hsl('+hue(a)+' 75% 42%)">'+label(a)+'</b></a>':'')
+   +'<div class="lmv"><button class="ghost sm" data-up="'+i+'" aria-label="Move up"'+(i?'':' disabled')+'>▲</button><button class="ghost sm" data-dn="'+i+'" aria-label="Move down"'+(i<n-1?'':' disabled')+'>▼</button></div>'
+   +'<button class="x" data-rm="'+i+'" aria-label="Remove from list">×</button></li>'}).join("");
+ $("lst").innerHTML='<div class="card"><input type="text" class="lname" id="lname" maxlength="80" value="'+esc(l.name)+'" aria-label="List name">'
+  +'<div class="a" style="margin:4px 0 12px">'+plural(n,"album")+(n>1?' · drag or use the arrows to rank them':'')+'</div>'
+  +'<input type="search" id="lq" placeholder="Add an album: search your reviews or any artist…" style="margin:0" autocomplete="off"><div id="lres"></div></div>'
+  +'<div class="card">'+(rows?'<ol class="lol">'+rows+'</ol>':'<div class="empty">This list is empty. Search above to add albums.</div>')+'</div>'
+  +'<div class="tools"><button class="ghost" id="ldel">Delete list</button></div>';
+ $("lname").onchange=function(){var v=this.value.trim();if(!v){this.value=l.name;return}l.name=v;touch(l)};
+ $("lname").onkeydown=function(e){if(e.key==="Enter")this.blur()};
+ if(justMade===l.id){justMade=null;setTimeout(function(){var x=$("lname");if(x){x.focus();x.select()}},50)}
+ $("lq").oninput=function(){showCands(l,this.value)};
+ $("ldel").onclick=function(){twoTap(this,function(){lists=lists.filter(function(x){return x.id!==l.id});saveLists();location.hash="#lists"})};
+ $("lres").onclick=function(e){var b=e.target.closest("[data-c]");if(!b)return;var c=lcand[+b.dataset.c];if(!c)return;
+  var it={k:itemKey(c.title,c.artist),title:c.title,artist:c.artist||""};if(c.albumId)it.albumId=c.albumId;if(c.cover&&/^https:/.test(c.cover))it.cover=c.cover;
+  l.items.push(it);touch(l);renderListPage(l.id);$("lq").focus()};
+ var ol=$("lst").querySelector(".lol");if(!ol)return;
+ ol.onclick=function(e){var b=e.target.closest("button");if(!b)return;var i;
+  if(b.dataset.up!=null){i=+b.dataset.up;if(i>0){l.items.splice(i-1,0,l.items.splice(i,1)[0]);touch(l);renderListPage(l.id)}}
+  else if(b.dataset.dn!=null){i=+b.dataset.dn;if(i<l.items.length-1){l.items.splice(i+1,0,l.items.splice(i,1)[0]);touch(l);renderListPage(l.id)}}
+  else if(b.dataset.rm!=null){l.items.splice(+b.dataset.rm,1);touch(l);renderListPage(l.id)}};
+ ol.ondragstart=function(e){var li=e.target.closest(".litem");if(!li)return;ldrag=+li.dataset.i;li.classList.add("drag");try{e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",String(ldrag))}catch(x){}};
+ ol.ondragover=function(e){var li=e.target.closest(".litem");if(!li||ldrag<0)return;e.preventDefault();ol.querySelectorAll(".over").forEach(function(x){x.classList.remove("over")});li.classList.add("over")};
+ ol.ondragleave=function(e){var li=e.target.closest(".litem");if(li&&!li.contains(e.relatedTarget))li.classList.remove("over")};
+ ol.ondragend=function(){ldrag=-1;ol.querySelectorAll(".drag,.over").forEach(function(x){x.classList.remove("drag","over")})};
+ ol.ondrop=function(e){var li=e.target.closest(".litem");if(!li||ldrag<0)return;e.preventDefault();var to=+li.dataset.i,from=ldrag;ldrag=-1;
+  if(to!==from){l.items.splice(to,0,l.items.splice(from,1)[0]);touch(l)}renderListPage(l.id)};
+}
+function showCands(l,q){
+ var w=normT(q),box=$("lres");lcand=[];if(!w){box.innerHTML="";return}
+ var have={};l.items.forEach(function(it){have[it.k]=1});
+ var seen={},add=function(c){var k=itemKey(c.title,c.artist);if(have[k]||seen[k])return;seen[k]=1;lcand.push(c)};
+ albums.filter(function(a){return normT(a.title+" "+a.artist).indexOf(w)>-1}).slice(0,6).forEach(function(a){add({title:a.title,artist:a.artist,albumId:a.id,cover:a.cover,rated:a})});
+ builtinSearch(q).slice(0,8).forEach(function(x){add({title:x.title,artist:x.artist,cover:x.cover})});
+ box.innerHTML=lcand.map(function(c,i){return '<button class="hit" data-c="'+i+'">'+cvHtml(c.cover||itemCover({title:c.title,artist:c.artist}))+'<div style="flex:1;min-width:0"><div class="t">'+esc(c.title)+'</div><div class="a">'+esc(c.artist||"")+(c.rated?' · your rating: '+label(c.rated):'')+'</div></div><span class="plus">+</span></button>'}).join("")
+  +(function(){lcand.push({title:q.trim(),artist:""});return '<button class="ghost" data-c="'+(lcand.length-1)+'">Add “'+esc(q.trim())+'” as typed</button>'})();
+}
 route();
 startCloud();
 setInterval(function(){if(!$("p-home").hidden&&kperiod(new Date().getHours())!==homePeriod)renderHome()},60000);
